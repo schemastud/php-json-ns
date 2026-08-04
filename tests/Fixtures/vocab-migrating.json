@@ -1,0 +1,4 @@
+{
+  "@namespace": { "splice": "https://schemas.splicewire.app/splice/grounding/2" },
+  "splice:grounding": { "context": ["ctx://profile"] }
+}

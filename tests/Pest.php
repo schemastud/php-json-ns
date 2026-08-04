@@ -12,3 +12,12 @@ function fixture(string $name): array
 
     return json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
 }
+
+/**
+ * The raw JSON text of a fixture (for schema fixtures fed to the opis-driven vocab registry,
+ * which wants the JSON string, not a decoded array).
+ */
+function fixtureJson(string $name): string
+{
+    return (string) file_get_contents(__DIR__.'/Fixtures/'.$name.'.json');
+}

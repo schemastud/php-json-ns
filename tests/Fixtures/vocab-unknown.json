@@ -1,0 +1,4 @@
+{
+  "@namespace": { "mystery": "https://schemas.example.com/mystery/thing" },
+  "mystery:widget": { "anything": true, "goes": [1, 2, 3] }
+}
