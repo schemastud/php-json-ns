@@ -1,0 +1,8 @@
+{
+  "@namespace": {
+    "splice":    "https://schemas.splicewire.app/splice/grounding",
+    "grounding": "https://schemas.splicewire.app/splice/grounding"
+  },
+  "grounding:sources": { "note": "additive same-URI re-bind: two prefixes, one namespace" },
+  "splice:grounding": { "note": "the original prefix still resolves the same URI" }
+}

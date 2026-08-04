@@ -1,0 +1,10 @@
+{
+  "@namespace": { "splice": "https://schemas.splicewire.app/splice/grounding" },
+  "config": {
+    "grounding": {
+      "@namespaced": "splice",
+      "sources": ["ctx://profile"],
+      "max_depth": 3
+    }
+  }
+}

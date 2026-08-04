@@ -1,0 +1,8 @@
+{
+  "@namespace": {
+    "frame":  "https://schemas.splicewire.app/frame",
+    "beam":   "https://schemas.splicewire.app/beam",
+    "splice": "https://schemas.splicewire.app/splice/grounding"
+  },
+  "splice:grounding": { "sources": ["..."] }
+}

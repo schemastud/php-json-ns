@@ -1,0 +1,6 @@
+{
+  "@namespace": {
+    "splice":    "https://schemas.splicewire.app/splice/grounding",
+    "splice_v3": "https://schemas.splicewire.app/splice/grounding/3"
+  }
+}

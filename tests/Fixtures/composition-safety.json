@@ -1,0 +1,8 @@
+{
+  "@namespace": { "splice": "https://schemas.splicewire.app/OUTER-COLLIDING-URI" },
+  "splice:outer": { "note": "outer B binds the 'splice' prefix to a DIFFERENT uri" },
+  "uses": {
+    "@namespace": { "splice": "https://schemas.splicewire.app/splice/grounding" },
+    "splice:grounding": { "sources": ["..."] }
+  }
+}
