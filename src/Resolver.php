@@ -3,6 +3,7 @@
 namespace Schemastud\JsonNs;
 
 use Schemastud\JsonNs\Exceptions\UnboundPrefix;
+use Schemastud\JsonNs\Vocab\VocabularyValidator;
 
 /**
  * The public resolve API for the `@namespace` grammar (asset 05). Given a decoded JSON
@@ -24,7 +25,7 @@ use Schemastud\JsonNs\Exceptions\UnboundPrefix;
  * This is the grammar + resolution + scoping model ONLY. Its two companions shipped
  * separately: handler DISPATCH lives in `schemastud/laravel-json-ns` (the URI-keyed socket
  * over popcorn's InvocableRegistry, JN-06), and the `$vocabulary` ENFORCEMENT engine is the
- * opis shim in {@see \Schemastud\JsonNs\Vocab\VocabularyValidator} (JN-05), driven by the
+ * opis shim in {@see VocabularyValidator} (JN-05), driven by the
  * scopes this resolver produces.
  */
 class Resolver
