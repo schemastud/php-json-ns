@@ -1,6 +1,8 @@
 <?php
 
 use Opis\JsonSchema\Validator;
+use Schemastud\JsonNs\Exceptions\VocabularyArtifactMissing;
+use Schemastud\JsonNs\NamespaceUri;
 use Schemastud\JsonNs\Vocab\RefusalPolicy;
 use Schemastud\JsonNs\Vocab\VocabularyRegistry;
 use Schemastud\JsonNs\Vocab\VocabularyValidator;
@@ -147,6 +149,49 @@ it('JN-17: a pinned document era inherits its stem\'s authored bit', function ()
 
     expect($errors)->not->toBe([])
         ->and($errors[0]->keyword())->toBe('$vocabulary');
+});
+
+// ── JN-16: the host-store seam — a registry BACKED by a host lookup, with declared-set guard ─
+// `VocabularyRegistry::backedBy($lookup, $declared)`: the lookup resolves against the host's
+// schema registry (exact URI then version-free stem); a DECLARED namespace with no artifact
+// behind it is a hard VocabularyArtifactMissing — distinct from unknown-namespace, which stays
+// a permissive pass under RefusalPolicy::Optional.
+
+it('JN-16: a backed registry resolves through the host lookup, exact then stem', function () {
+    $store = [
+        GROUNDING => json_decode(fixtureJson('vocab/grounding.schema'), false),
+    ];
+
+    $registry = VocabularyRegistry::backedBy(
+        fn (string $uri) => $store[$uri] ?? null,
+    );
+
+    // Exact stem hit; a pinned handle with no pinned entry falls to the stem.
+    expect($registry->schemaFor(NamespaceUri::from(GROUNDING)))->not->toBeNull()
+        ->and($registry->schemaFor(NamespaceUri::from(GROUNDING.'/7')))->not->toBeNull()
+        ->and($registry->schemaFor(NamespaceUri::from('https://schemas.example.com/other/ns')))->toBeNull();
+
+    // The whole validator path works over a backed registry.
+    expect((new VocabularyValidator($registry))->passes(fixture('vocab-conforms')))->toBeTrue()
+        ->and((new VocabularyValidator($registry))->passes(fixture('vocab-violates')))->toBeFalse();
+});
+
+it('JN-16: a DECLARED namespace with no artifact fails loudly; an unknown one still passes', function () {
+    $registry = VocabularyRegistry::backedBy(
+        fn (string $uri) => null,                                   // the host store is empty
+        declared: ['https://schemas.example.com/mystery/thing'],    // …but the manifest declares it
+    );
+
+    // Declared-but-missing → hard error, even under the permissive default policy.
+    expect(fn () => (new VocabularyValidator($registry))->validate(fixture('vocab-unknown')))
+        ->toThrow(VocabularyArtifactMissing::class);
+
+    // has() reads declared-but-missing as absent rather than throwing.
+    expect($registry->has(NamespaceUri::from('https://schemas.example.com/mystery/thing')))->toBeFalse();
+
+    // An entirely UNDECLARED namespace keeps the permissive unknown-namespace pass.
+    $undeclared = VocabularyRegistry::backedBy(fn (string $uri) => null);
+    expect((new VocabularyValidator($undeclared))->passes(fixture('vocab-unknown')))->toBeTrue();
 });
 
 // ── JN-17 invariant: the dialect must not REDUCE standards conformance (ADR-0192 §7) ─────────

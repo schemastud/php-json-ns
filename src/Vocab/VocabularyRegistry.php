@@ -2,6 +2,8 @@
 
 namespace Schemastud\JsonNs\Vocab;
 
+use Closure;
+use Schemastud\JsonNs\Exceptions\VocabularyArtifactMissing;
 use Schemastud\JsonNs\NamespaceScope;
 use Schemastud\JsonNs\NamespaceUri;
 
@@ -27,16 +29,51 @@ class VocabularyRegistry
     private array $schemas;
 
     /**
-     * @param  array<string, object|bool>  $schemas
+     * The host-store seam (JN-16 / ADR-0192 §6): a lookup the host binds behind this port —
+     * raw-URI-string → decoded opis schema (object|bool), or null when the store has nothing.
+     * Consulted after the in-memory map, with the same exact-then-stem identity.
+     *
+     * @var (Closure(string): (object|bool|null))|null
      */
-    private function __construct(array $schemas)
+    private ?Closure $lookup;
+
+    /**
+     * Namespace URIs (stems or pins) the host DECLARES: an unresolved lookup for one of these
+     * is a hard {@see VocabularyArtifactMissing}, never a permissive miss (JN-16).
+     *
+     * @var array<int, string>
+     */
+    private array $declared;
+
+    /**
+     * @param  array<string, object|bool>  $schemas
+     * @param  (Closure(string): (object|bool|null))|null  $lookup
+     * @param  array<int, string>  $declared
+     */
+    private function __construct(array $schemas, ?Closure $lookup = null, array $declared = [])
     {
         $this->schemas = $schemas;
+        $this->lookup = $lookup;
+        $this->declared = $declared;
     }
 
     public static function make(): self
     {
         return new self([]);
+    }
+
+    /**
+     * A registry BACKED by a host store (JN-16): `$lookup` resolves a raw URI string against
+     * the host's schema registry (the beam `SchemaRegistry` seam); `$declared` lists the
+     * namespace URIs the host's manifest declares, whose absence from the store is a hard
+     * error rather than an unknown-namespace pass.
+     *
+     * @param  Closure(string): (object|bool|null)  $lookup
+     * @param  array<int, string>  $declared
+     */
+    public static function backedBy(Closure $lookup, array $declared = []): self
+    {
+        return new self([], $lookup, array_values(array_map('strval', $declared)));
     }
 
     /**
@@ -47,7 +84,7 @@ class VocabularyRegistry
      */
     public function register(string $uri, object|bool $schema): self
     {
-        $clone = new self($this->schemas);
+        $clone = new self($this->schemas, $this->lookup, $this->declared);
         $clone->schemas[$uri] = $schema;
 
         return $clone;
@@ -59,10 +96,14 @@ class VocabularyRegistry
         return $this->register($uri, json_decode($json, false, flags: JSON_THROW_ON_ERROR));
     }
 
-    /** Is any vocab (exact or stem) registered for this URI? */
+    /** Is any vocab (exact or stem) registered for this URI? Declared-but-missing reads as absent. */
     public function has(NamespaceUri $uri): bool
     {
-        return $this->schemaFor($uri) !== null;
+        try {
+            return $this->schemaFor($uri) !== null;
+        } catch (VocabularyArtifactMissing) {
+            return false;
+        }
     }
 
     /**
@@ -86,6 +127,26 @@ class VocabularyRegistry
         // 2. Version-free stem — "latest" for an unpinned handle.
         if ($uri->isPinned() && array_key_exists($uri->stem(), $this->schemas)) {
             return $this->schemas[$uri->stem()];
+        }
+
+        // 3. The host store (JN-16), same exact-then-stem identity.
+        if ($this->lookup !== null) {
+            $found = ($this->lookup)((string) $uri);
+
+            if ($found === null && $uri->isPinned()) {
+                $found = ($this->lookup)($uri->stem());
+            }
+
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        // 4. Declared-but-missing is a HARD error (JN-16): the host's manifest names this
+        //    namespace, so an absent artifact is a deployment defect — silently passing would
+        //    let a host that never ships the artifact report success on everything.
+        if (in_array((string) $uri, $this->declared, true) || in_array($uri->stem(), $this->declared, true)) {
+            throw VocabularyArtifactMissing::for((string) $uri);
         }
 
         return null;
