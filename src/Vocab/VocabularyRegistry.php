@@ -144,8 +144,14 @@ class VocabularyRegistry
 
         // 4. Declared-but-missing is a HARD error (JN-16): the host's manifest names this
         //    namespace, so an absent artifact is a deployment defect — silently passing would
-        //    let a host that never ships the artifact report success on everything.
-        if (in_array((string) $uri, $this->declared, true) || in_array($uri->stem(), $this->declared, true)) {
+        //    let a host that never ships the artifact report success on everything. Same
+        //    exact-then-stem identity as steps 1–3: the stem inherits declaredness only for a
+        //    PINNED handle (an era of the declared namespace). An UNPINNED URI whose last path
+        //    segment merely sits under a declared namespace (`<base>/splice/grounding` under a
+        //    declared `<base>/splice`) is a DIFFERENT namespace — unknown, not declared — and
+        //    keeps the permissive unknown-namespace pass.
+        if (in_array((string) $uri, $this->declared, true)
+            || ($uri->isPinned() && in_array($uri->stem(), $this->declared, true))) {
             throw VocabularyArtifactMissing::for((string) $uri);
         }
 

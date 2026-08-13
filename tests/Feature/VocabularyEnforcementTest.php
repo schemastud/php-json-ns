@@ -194,6 +194,28 @@ it('JN-16: a DECLARED namespace with no artifact fails loudly; an unknown one st
     expect((new VocabularyValidator($undeclared))->passes(fixture('vocab-unknown')))->toBeTrue();
 });
 
+it('JN-16: an UNPINNED namespace one segment under a declared one is unknown, not declared', function () {
+    // `<base>/splice` is declared; `<base>/splice/grounding` is a DIFFERENT namespace whose last
+    // path segment merely sits under it. Only a PINNED era (`<base>/splice/3`) inherits the
+    // declared stem's bit — the unpinned sub-path keeps the permissive unknown pass (this is the
+    // live grounding-namespace shape; regression for the code-review finding).
+    $registry = VocabularyRegistry::backedBy(
+        fn (string $uri) => null,
+        declared: ['https://schemas.splicewire.app/splice'],
+    );
+
+    $doc = [
+        '@namespace' => ['splice' => 'https://schemas.splicewire.app/splice/grounding'],
+        'splice:grounding' => ['anything' => true],
+    ];
+
+    expect((new VocabularyValidator($registry))->passes($doc))->toBeTrue();
+
+    // …while a PINNED era of the declared namespace still fails loudly when unpublished.
+    expect(fn () => $registry->schemaFor(NamespaceUri::from('https://schemas.splicewire.app/splice/3')))
+        ->toThrow(VocabularyArtifactMissing::class);
+});
+
 // ── JN-17 invariant: the dialect must not REDUCE standards conformance (ADR-0192 §7) ─────────
 // Asset 05 §3 chose `@`-keys over `$`-keys partly so a dialect-bearing artifact stays plain,
 // valid 2020-12 to a STOCK validator. Nothing had ever tested it.
