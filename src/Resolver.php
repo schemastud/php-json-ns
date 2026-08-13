@@ -21,8 +21,11 @@ use Schemastud\JsonNs\Exceptions\UnboundPrefix;
  * is additive: a second prefix bound to the same URI is the same namespace (handled by
  * {@see NamespaceMap} — the URI, not the prefix, is compared).
  *
- * This is the grammar + resolution + scoping model ONLY — no handler dispatch (ticket 06),
- * no validation enforcement engine (§7 build handoff).
+ * This is the grammar + resolution + scoping model ONLY. Its two companions shipped
+ * separately: handler DISPATCH lives in `schemastud/laravel-json-ns` (the URI-keyed socket
+ * over popcorn's InvocableRegistry, JN-06), and the `$vocabulary` ENFORCEMENT engine is the
+ * opis shim in {@see \Schemastud\JsonNs\Vocab\VocabularyValidator} (JN-05), driven by the
+ * scopes this resolver produces.
  */
 class Resolver
 {
