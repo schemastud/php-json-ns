@@ -42,13 +42,16 @@ class NamespaceUri implements Stringable
      * Parse a namespace URI. Tolerant: when the trailing segment is not a non-negative
      * integer (version-free or malformed), the version is null and the whole input is the
      * stem, so the value still round-trips.
+     *
+     * Late static binding (`new static`) so a subclass (e.g. a host's `SchemaId`,
+     * ADR-0191) parses to itself — one grammar, many roles.
      */
-    public static function from(string $uri): self
+    public static function from(string $uri): static
     {
         $pos = strrpos($uri, '/');
 
         if ($pos === false) {
-            return new self($uri, $uri, null);
+            return new static($uri, $uri, null);
         }
 
         $stem = substr($uri, 0, $pos);
@@ -56,7 +59,7 @@ class NamespaceUri implements Stringable
 
         $version = ($tail !== '' && ctype_digit($tail)) ? (int) $tail : null;
 
-        return new self($uri, $stem, $version);
+        return new static($uri, $stem, $version);
     }
 
     /** The `<base>/<name>` stem — the URI sans any trailing version segment. */
@@ -88,9 +91,9 @@ class NamespaceUri implements Stringable
     }
 
     /** A sibling URI on the same stem at the given version. */
-    public function withVersion(int $version): self
+    public function withVersion(int $version): static
     {
-        return new self($this->stem.'/'.$version, $this->stem, $version);
+        return new static($this->stem.'/'.$version, $this->stem, $version);
     }
 
     /** True iff two URIs share the same stem (same namespace, any version). */
