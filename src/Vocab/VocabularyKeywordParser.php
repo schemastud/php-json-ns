@@ -53,6 +53,33 @@ class VocabularyKeywordParser extends KeywordParser
             return null;
         }
 
-        return new VocabularyKeyword($this->scope, $this->registry, $this->policy);
+        return new VocabularyKeyword($this->scope, $this->registry, $this->policy, $this->authoredMap($info->data()));
+    }
+
+    /**
+     * The AUTHORED `$vocabulary` URI→bool map off the schema being parsed (JN-17). 2020-12
+     * defines the value as a URI→bool object — the bool is that vocabulary's required/optional
+     * bit — so per-URI intent rides the schema text into the keyword. Malformed entries
+     * (non-bool values) are dropped rather than guessed at.
+     *
+     * @return array<string, bool>
+     */
+    private function authoredMap(object $data): array
+    {
+        $raw = $data->{$this->keyword} ?? null;
+
+        if (! is_object($raw)) {
+            return [];
+        }
+
+        $map = [];
+
+        foreach (get_object_vars($raw) as $uri => $required) {
+            if (is_bool($required)) {
+                $map[$uri] = $required;
+            }
+        }
+
+        return $map;
     }
 }

@@ -9,6 +9,7 @@ use Opis\JsonSchema\Parsers\Vocabulary;
 use Opis\JsonSchema\Schema;
 use Opis\JsonSchema\ValidationContext;
 use Schemastud\JsonNs\NamespaceScope;
+use Schemastud\JsonNs\NamespaceUri;
 
 /**
  * The custom opis `Keyword` that ENFORCES `$vocabulary` scoping — the thing opis/json-schema
@@ -38,11 +39,18 @@ class VocabularyKeyword implements Keyword
 
     private RefusalPolicy $policy;
 
-    public function __construct(NamespaceScope $scope, VocabularyRegistry $registry, RefusalPolicy $policy)
+    /** @var array<string, bool> the AUTHORED `$vocabulary` URI→bool map (JN-17) */
+    private array $authored;
+
+    /**
+     * @param  array<string, bool>  $authored
+     */
+    public function __construct(NamespaceScope $scope, VocabularyRegistry $registry, RefusalPolicy $policy, array $authored = [])
     {
         $this->scope = $scope;
         $this->registry = $registry;
         $this->policy = $policy;
+        $this->authored = $authored;
     }
 
     public function validate(ValidationContext $context, Schema $schema): ?ValidationError
@@ -58,9 +66,12 @@ class VocabularyKeyword implements Keyword
         $vocabSchema = $this->registry->schemaFor($uri);
 
         if ($vocabSchema === null) {
-            // Unknown/unregistered vocabulary. Refusal semantics are the RefusalPolicy decision
-            // (see that enum): Optional (the DEFAULT) passes; Required fails closed.
-            if ($this->policy->isRequired()) {
+            // Unknown/unregistered vocabulary. Refusal semantics are PER-URI (JN-17): the
+            // authored `$vocabulary` map's bool for this URI wins (2020-12 — true = required,
+            // an implementation that cannot supply the vocabulary MUST refuse; false =
+            // optional, proceed); the instance-wide RefusalPolicy decides only for URIs the
+            // author declared no bit for.
+            if ($this->requiredFor($uri)) {
                 return $this->error($schema, $context, '$vocabulary',
                     'Required vocabulary "{vocabulary}" is not registered; refusing to validate the subtree.',
                     ['vocabulary' => (string) $uri]);
@@ -90,5 +101,25 @@ class VocabularyKeyword implements Keyword
         return $this->error($schema, $context, '$vocabulary',
             'The data does not conform to its namespace vocabulary "{vocabulary}".',
             ['vocabulary' => (string) $uri], $error);
+    }
+
+    /**
+     * Is an UNAVAILABLE vocabulary at this URI a refusal? The authored map's per-URI bool is
+     * authoritative when present — exact (possibly pinned) URI first, then the version-free
+     * stem (the same two-step identity the registry itself resolves by, so a pinned document
+     * era inherits its stem's authored bit rather than silently falling to the default).
+     * With no authored bit, the instance-wide {@see RefusalPolicy} decides.
+     */
+    private function requiredFor(NamespaceUri $uri): bool
+    {
+        if (array_key_exists((string) $uri, $this->authored)) {
+            return $this->authored[(string) $uri];
+        }
+
+        if ($uri->isPinned() && array_key_exists($uri->stem(), $this->authored)) {
+            return $this->authored[$uri->stem()];
+        }
+
+        return $this->policy->isRequired();
     }
 }

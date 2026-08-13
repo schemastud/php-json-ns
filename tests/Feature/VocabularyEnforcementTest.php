@@ -1,5 +1,6 @@
 <?php
 
+use Opis\JsonSchema\Validator;
 use Schemastud\JsonNs\Vocab\RefusalPolicy;
 use Schemastud\JsonNs\Vocab\VocabularyRegistry;
 use Schemastud\JsonNs\Vocab\VocabularyValidator;
@@ -90,4 +91,81 @@ it('§7-edge-2: control — the same older-era shape DOES fail the newer stem vo
     // vocab-migrating pins `/2`; with no `/2` registered it falls to the stem vocab, which
     // requires `sources` the old-shape doc lacks → refused. This is the negative control.
     expect($validator->passes(fixture('vocab-migrating')))->toBeFalse();
+});
+
+// ── JN-17: per-URI refusal semantics — the AUTHORED `$vocabulary` map's booleans are read ────
+// 2020-12 defines `$vocabulary` as a URI→bool map (true = required: an implementation that
+// cannot supply the vocabulary MUST refuse; false = optional: proceed). The authored bit wins
+// per URI; the instance-wide RefusalPolicy decides only for URIs the author declared no bit for.
+
+it('JN-17: an authored `true` REFUSES an unknown vocabulary even under the default Optional policy', function () {
+    // Registry knows grounding only; the mystery vocab is unknown — but the document itself
+    // declares it required, so the permissive instance default must NOT swallow the refusal.
+    $validator = new VocabularyValidator(groundingRegistry());
+
+    $errors = $validator->validate(fixture('vocab-declared-required'));
+
+    expect($errors)->not->toBe([])
+        ->and($errors[0]->keyword())->toBe('$vocabulary');
+});
+
+it('JN-17: an authored `false` PASSES an unknown vocabulary even under an instance-wide Required policy', function () {
+    // The author explicitly marked the vocabulary optional; the strict instance default only
+    // governs URIs with no authored bit.
+    $validator = new VocabularyValidator(groundingRegistry(), RefusalPolicy::Required);
+
+    expect($validator->passes(fixture('vocab-declared-optional')))->toBeTrue();
+});
+
+it('JN-17: a URI absent from the authored map still follows the instance-wide policy', function () {
+    // The authored map declares only an unrelated URI; the mystery namespace keeps default
+    // (Optional → pass, Required → refuse) semantics.
+    $doc = fixture('vocab-unknown');
+    $doc['$vocabulary'] = ['https://schemas.example.com/other/thing' => true];
+
+    expect((new VocabularyValidator(groundingRegistry()))->passes($doc))->toBeTrue()
+        ->and((new VocabularyValidator(groundingRegistry(), RefusalPolicy::Required))->passes($doc))->toBeFalse();
+});
+
+it('JN-17: a KNOWN vocabulary is still enforced regardless of its authored bit', function () {
+    // `false` means "proceed if you cannot supply it" — it never disables enforcement of a
+    // vocabulary the registry CAN supply.
+    $doc = fixture('vocab-violates');
+    $doc['$vocabulary'] = [GROUNDING => false];
+
+    expect((new VocabularyValidator(groundingRegistry()))->passes($doc))->toBeFalse();
+});
+
+it('JN-17: a pinned document era inherits its stem\'s authored bit', function () {
+    // vocab-migrating pins `.../grounding/2`; nothing is registered at all, and the authored map
+    // declares the version-free STEM required — the pinned URI resolves that bit via the same
+    // exact-then-stem identity the registry uses.
+    $doc = fixture('vocab-migrating');
+    $doc['$vocabulary'] = [GROUNDING => true];
+
+    $errors = (new VocabularyValidator(VocabularyRegistry::make()))->validate($doc);
+
+    expect($errors)->not->toBe([])
+        ->and($errors[0]->keyword())->toBe('$vocabulary');
+});
+
+// ── JN-17 invariant: the dialect must not REDUCE standards conformance (ADR-0192 §7) ─────────
+// Asset 05 §3 chose `@`-keys over `$`-keys partly so a dialect-bearing artifact stays plain,
+// valid 2020-12 to a STOCK validator. Nothing had ever tested it.
+
+it('JN-17 invariant: a dialect-bearing BeamSchema artifact still works under a STOCK 2020-12 validator', function () {
+    $validator = new Validator; // stock opis — no shim, no custom vocabulary
+
+    $schema = $validator->loader()->loadObjectSchema(
+        json_decode(fixtureJson('beam-artifact'), false, flags: JSON_THROW_ON_ERROR),
+    );
+
+    // The artifact parses as an ordinary schema (its @namespace/@namespaced/CURIE keys are
+    // unknown-keyword annotations, not errors) and still VALIDATES: conforming data passes…
+    $ok = $validator->validate((object) ['title' => 'Hello', 'body' => 'World'], $schema);
+    expect($ok->isValid())->toBeTrue();
+
+    // …and violating data still fails — the dialect neither breaks nor lobotomizes validation.
+    $bad = $validator->validate((object) ['body' => 'no title'], $schema);
+    expect($bad->isValid())->toBeFalse();
 });

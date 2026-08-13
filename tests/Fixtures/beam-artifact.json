@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.splicewire.app/content/article/3",
+  "type": "object",
+  "@namespace": { "splice": "https://schemas.splicewire.app/splice/grounding" },
+  "@namespaced": [
+    { "scope": "/properties/body", "namespace": "splice" }
+  ],
+  "properties": {
+    "title": { "type": "string" },
+    "body": { "type": "string" },
+    "splice:grounding": {
+      "type": "object",
+      "properties": {
+        "sources": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "required": ["title"]
+}

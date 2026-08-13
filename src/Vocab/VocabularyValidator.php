@@ -40,7 +40,13 @@ class VocabularyValidator
 
     private RefusalPolicy $policy;
 
-    /** The trivial trigger schema: an object carrying `$vocabulary` so our keyword fires. */
+    /**
+     * The FALLBACK trigger schema for a document that authors no `$vocabulary` map of its own:
+     * an object carrying an empty `$vocabulary` so our keyword still fires, with refusal
+     * semantics supplied entirely by the instance-wide {@see RefusalPolicy}. A document that
+     * DOES author a root `$vocabulary` URI→bool map (2020-12) gets that map as the trigger
+     * instead, so its per-URI required/optional intent is read, never discarded (JN-17).
+     */
     private const TriggerSchema = '{"$vocabulary": {}}';
 
     public function __construct(VocabularyRegistry $registry, RefusalPolicy $policy = RefusalPolicy::Optional)
@@ -59,12 +65,13 @@ class VocabularyValidator
     public function validate(array $document): array
     {
         $resolver = Resolver::for($document);
+        $authored = $this->authoredMap($document);
         $errors = [];
 
         foreach ($this->namespacedSubtrees($document) as [$pointer, $subtree]) {
             $scope = $resolver->scopeAt($pointer);
 
-            $error = $this->enforce($scope, $subtree);
+            $error = $this->enforce($scope, $subtree, $authored);
 
             if ($error !== null) {
                 $errors[] = $error;
@@ -83,11 +90,42 @@ class VocabularyValidator
     }
 
     /**
+     * The document's own root-level `$vocabulary` URI→bool map (2020-12: the bool is that
+     * vocabulary's required/optional bit). Non-string keys and non-bool values are dropped —
+     * only well-formed declarations carry authored intent.
+     *
+     * @param  array<string, mixed>  $document
+     * @return array<string, bool>
+     */
+    private function authoredMap(array $document): array
+    {
+        $raw = $document[GrammarWords::VocabularyKeyword] ?? [];
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $map = [];
+
+        foreach ($raw as $uri => $required) {
+            if (is_string($uri) && is_bool($required)) {
+                $map[$uri] = $required;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * Enforce one resolved scope's vocabulary against one subtree's instance data. The custom
      * opis vocabulary is built PER subtree because the scope (and thus the URI to enforce) is a
-     * property of the subtree, not of the schema text.
+     * property of the subtree, not of the schema text. The trigger schema carries the document's
+     * AUTHORED `$vocabulary` map when one exists (per-URI refusal semantics, JN-17); the empty
+     * synthetic map is only the fallback for documents that declare none.
+     *
+     * @param  array<string, bool>  $authored
      */
-    private function enforce(NamespaceScope $scope, mixed $subtree): ?ValidationError
+    private function enforce(NamespaceScope $scope, mixed $subtree, array $authored = []): ?ValidationError
     {
         $extra = (new DefaultVocabulary)->appendKeyword(
             new VocabularyKeywordParser($scope, $this->registry, $this->policy),
@@ -96,9 +134,13 @@ class VocabularyValidator
         $loader = new SchemaLoader(new SchemaParser([], [], $extra), null, true);
         $validator = new Validator($loader);
 
+        $trigger = $authored === []
+            ? json_decode(self::TriggerSchema, false, flags: JSON_THROW_ON_ERROR)
+            : (object) [GrammarWords::VocabularyKeyword => (object) $authored];
+
         $result = $validator->validate(
             $this->toOpisData($subtree),
-            json_decode(self::TriggerSchema, false, flags: JSON_THROW_ON_ERROR),
+            $trigger,
         );
 
         return $result->error();
