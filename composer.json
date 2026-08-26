@@ -1,7 +1,14 @@
 {
     "name": "schemastud/php-json-ns",
     "description": "The framework-free @namespace grammar: a CURIE-shaped, RDF-stripped prefix→URI map (SchemaId-shaped URIs) with @namespaced subtree overlays, late scope-local URI-is-identity resolution, and a namespace-aware validation-scoping model.",
-    "keywords": ["json", "namespace", "curie", "json-ld", "vocabulary", "schema"],
+    "keywords": [
+        "json",
+        "namespace",
+        "curie",
+        "json-ld",
+        "vocabulary",
+        "schema"
+    ],
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -12,11 +19,13 @@
     ],
     "require": {
         "php": "^8.3",
-        "opis/json-schema": "^2.3"
+        "opis/json-schema": "^2.3",
+        "rushing/php-popcorn": "*"
     },
     "require-dev": {
         "laravel/pint": "^1.0",
-        "pestphp/pest": "^3.0"
+        "pestphp/pest": "^3.0",
+        "wikimedia/composer-merge-plugin": "^2.1"
     },
     "autoload": {
         "psr-4": {
@@ -30,12 +39,20 @@
     },
     "extra": {
         "package-topology": {
-            "mustNotRequire": ["illuminate/*"]
+            "mustNotRequire": [
+                "illuminate/*"
+            ]
+        },
+        "merge-plugin": {
+            "include": [
+                "composer.local.json"
+            ]
         }
     },
     "config": {
         "allow-plugins": {
-            "pestphp/pest-plugin": true
+            "pestphp/pest-plugin": true,
+            "wikimedia/composer-merge-plugin": true
         },
         "sort-packages": true
     },
@@ -44,5 +61,11 @@
     "scripts": {
         "pint": "@php -d memory_limit=512M vendor/bin/pint",
         "test": "@php vendor/bin/pest"
-    }
+    },
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/stephenr85/php-popcorn.git"
+        }
+    ]
 }
