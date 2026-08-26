@@ -2,6 +2,8 @@
 
 namespace Schemastud\JsonNs;
 
+use Rushing\Popcorn\Registries\AbsoluteUriKey;
+use Rushing\Popcorn\Registries\Key;
 use Rushing\Popcorn\Registries\RegistryKey;
 
 /**
@@ -17,8 +19,13 @@ use Rushing\Popcorn\Registries\RegistryKey;
  *
  * `RegistryKey` is a SEAM, not a grammar: the kernel COMPARES and JOINS segments and never parses one,
  * so a key type is CONSTRUCTED, never parsed, and popcorn's `[a-z0-9-]` charset governs only
- * {@see \Rushing\Popcorn\Registries\Key} — the canonical implementation for keys written as string
- * literals. A URI's `:` and `/` would fail that charset outright, and it does not have to survive it.
+ * {@see Key} — the canonical implementation for keys written as string literals. A URI's `:` and `/`
+ * would fail that charset outright, and it does not have to survive it.
+ *
+ * What this class still owns after ticket 64 is exactly the pin rule below. Everything generic about
+ * an absolute-URI key — one opaque segment, segment equality, the URI as rendering, the refusal to
+ * root-stamp — moved down into {@see AbsoluteUriKey} in `rushing/php-popcorn`, which this extends. The
+ * dependency edge is not new: `php-json-ns` already requires the kernel (registry-kernel ticket 56).
  *
  * ## The pin is a CHILD of its stem
  *
@@ -29,11 +36,19 @@ use Rushing\Popcorn\Registries\RegistryKey;
  *
  * ## The consequence to design around
  *
- * A foreign key is never stamped with a registry root, because the kernel cannot construct a consumer's
- * key type. So these entries are **not addressable through the global keyspace** — reachable through
- * a namespace registry and through {@see \Schemastud\JsonNs\Laravel\NamespaceDispatcher}, never through
- * `Popcorn::pop()` (registry-kernel ticket 20 D3). That is the trade URI-is-identity buys, taken
- * deliberately.
+ * These entries are **not addressable through the global keyspace** — reachable through a namespace
+ * registry and through {@see \Schemastud\JsonNs\Laravel\NamespaceDispatcher}, never through
+ * `Popcorn::pop()` (registry-kernel ticket 20 D3, narrowed by ticket 64). That is the trade
+ * URI-is-identity buys, taken deliberately.
+ *
+ * ⚠️ **The reason changed on 2026-08-26 while the behaviour did not**, and the distinction is worth
+ * keeping straight. It used to be *"a foreign key is never stamped, because the kernel cannot construct
+ * a consumer's key type."* Ticket 64 widened {@see \Rushing\Popcorn\Registries\BasicRegistry}'s door
+ * from `instanceof Key` to {@see \Rushing\Popcorn\Registries\Rootable}, so the kernel now CAN address
+ * types it ships — and this key's base, {@see AbsoluteUriKey}, is one of them. It stays unstamped
+ * because that base **declines**: a dotted root over one opaque URI segment addresses nothing. So the
+ * property this package relies on is no longer an incapacity it inherits by being a stranger; it is a
+ * decision the kernel makes openly, in a type that could do otherwise.
  *
  * ## Why it lives HERE and not in the Laravel binding
  *
@@ -44,39 +59,27 @@ use Rushing\Popcorn\Registries\RegistryKey;
  * a new Laravel dependency edge. Moved down a tier instead (registry-kernel ticket 56); the price is this
  * package's one dependency on the registry kernel, which is itself framework-free.
  */
-class NamespaceUriKey implements RegistryKey
+class NamespaceUriKey extends AbsoluteUriKey
 {
-    /** @param  list<string>  $segments */
-    private function __construct(private array $segments, private string $uri) {}
-
-    public static function of(string|NamespaceUri $uri): self
+    /**
+     * The one override, and the one thing about this key that is json-ns-specific: a {@see NamespaceUri}
+     * is validated and rendered by THIS package, and a pinned version segments as a child of its stem.
+     *
+     * Deliberately does not call `parent::of()`. That parser exists to reject a relative path arriving
+     * where an absolute URI was meant; a `NamespaceUri` has already been through a stricter gate than
+     * "has a scheme", so routing through it would be a second, looser opinion about what this
+     * package's identities are.
+     *
+     * ⚠️ The parameter type WIDENS the parent's `string`, which PHP permits and which is the point —
+     * a `NamespaceUri` may be handed over already parsed. It does not narrow anything.
+     */
+    public static function of(string|NamespaceUri $uri): static
     {
         $parsed = $uri instanceof NamespaceUri ? $uri : NamespaceUri::from((string) $uri);
 
-        return new self(
+        return new static(
             $parsed->isPinned() ? [$parsed->stem(), (string) $parsed->version()] : [(string) $parsed],
             (string) $parsed,
         );
-    }
-
-    /** @return list<string> */
-    public function segments(): array
-    {
-        return $this->segments;
-    }
-
-    /**
-     * Equality is defined on SEGMENTS, never on the source string — the property that makes two
-     * spellings of one identity the same key and two keyspaces that happen to render alike distinct.
-     */
-    public function equals(RegistryKey $other): bool
-    {
-        return $this->segments === $other->segments();
-    }
-
-    /** The URI itself. A rendering for humans and transports; never the identity. */
-    public function __toString(): string
-    {
-        return $this->uri;
     }
 }
