@@ -25,8 +25,8 @@ it('parses the sidecar array long form', function () {
 });
 
 it('makes the inline and sidecar forms EXACTLY equivalent (§4b claim)', function () {
-    $inline = Resolver::for(fixture('overlay-inline'));
-    $sidecar = Resolver::for(fixture('overlay-sidecar'));
+    $inline = Resolver::for(fixtureData('overlay-inline'));
+    $sidecar = Resolver::for(fixtureData('overlay-sidecar'));
 
     $ptr = '/config/grounding/sources';
 
@@ -39,7 +39,7 @@ it('makes the inline and sidecar forms EXACTLY equivalent (§4b claim)', functio
 });
 
 it('re-namespaces unowned plain keys WITHOUT rewriting them to CURIE form', function () {
-    $resolver = Resolver::for(fixture('overlay-inline'));
+    $resolver = Resolver::for(fixtureData('overlay-inline'));
 
     // 'sources' and 'max_depth' are plain unprefixed keys authored by someone else,
     // yet governed by 'splice' via the overlay — never renamed to splice:sources.
@@ -53,7 +53,7 @@ it('re-namespaces unowned plain keys WITHOUT rewriting them to CURIE form', func
 
 it('scopes the overlay to its subtree — siblings outside the scope fall to base', function () {
     // A key sitting OUTSIDE /config/grounding is not governed by the overlay.
-    $resolver = Resolver::for(fixture('overlay-sidecar'));
+    $resolver = Resolver::for(fixtureData('overlay-sidecar'));
 
     expect($resolver->scopeAt('/config')->isBase())->toBeTrue();
 });

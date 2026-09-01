@@ -12,7 +12,7 @@ it('owns @namespace and @namespaced as the @-family grammar keys', function () {
 });
 
 it('parses the asset-05 §3 declaration into a prefix→URI map', function () {
-    $map = NamespaceMap::fromNode(fixture('declaration'));
+    $map = NamespaceMap::fromNode(fixtureData('declaration'));
 
     expect($map->has('frame'))->toBeTrue()
         ->and($map->has('beam'))->toBeTrue()
@@ -26,7 +26,7 @@ it('yields an empty map when no @namespace is present (legacy fallback territory
 });
 
 it('resolves values as NamespaceUri value objects', function () {
-    $uri = NamespaceMap::fromNode(fixture('declaration'))->resolve('splice');
+    $uri = NamespaceMap::fromNode(fixtureData('declaration'))->resolve('splice');
 
     expect($uri)->toBeInstanceOf(NamespaceUri::class);
 });

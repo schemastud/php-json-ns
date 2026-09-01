@@ -23,18 +23,18 @@ function groundingRegistry(): VocabularyRegistry
 it('passes a subtree that CONFORMS to its $vocabulary', function () {
     $validator = new VocabularyValidator(groundingRegistry());
 
-    expect($validator->passes(fixture('vocab-conforms')))->toBeTrue()
-        ->and($validator->validate(fixture('vocab-conforms')))->toBe([]);
+    expect($validator->passes(fixtureData('vocab-conforms')))->toBeTrue()
+        ->and($validator->validate(fixtureData('vocab-conforms')))->toBe([]);
 });
 
 it('refuses a subtree that VIOLATES its $vocabulary', function () {
     $validator = new VocabularyValidator(groundingRegistry());
 
-    $errors = $validator->validate(fixture('vocab-violates'));
+    $errors = $validator->validate(fixtureData('vocab-violates'));
 
     // `sources` missing + `max_depth` over-max → the namespace vocabulary refuses the subtree.
     expect($errors)->not->toBe([])
-        ->and($validator->passes(fixture('vocab-violates')))->toBeFalse()
+        ->and($validator->passes(fixtureData('vocab-violates')))->toBeFalse()
         ->and($errors[0]->keyword())->toBe('$vocabulary');
 });
 
@@ -45,13 +45,13 @@ it('§7-edge-1: passes an UNKNOWN vocabulary under the default Optional policy',
     // Registry knows grounding only; the `mystery:` namespace is unregistered.
     $validator = new VocabularyValidator(groundingRegistry());
 
-    expect($validator->passes(fixture('vocab-unknown')))->toBeTrue();
+    expect($validator->passes(fixtureData('vocab-unknown')))->toBeTrue();
 });
 
 it('§7-edge-1: REFUSES the same unknown vocabulary under an explicit Required policy', function () {
     $validator = new VocabularyValidator(groundingRegistry(), RefusalPolicy::Required);
 
-    $errors = $validator->validate(fixture('vocab-unknown'));
+    $errors = $validator->validate(fixtureData('vocab-unknown'));
 
     expect($errors)->not->toBe([])
         ->and($errors[0]->keyword())->toBe('$vocabulary');
@@ -61,7 +61,7 @@ it('§7-edge-1: an ABSENT namespace (base scope) always passes — nothing to re
     // `declaration` has only an @namespace decl and no namespaced subtree data.
     $required = new VocabularyValidator(groundingRegistry(), RefusalPolicy::Required);
 
-    expect($required->passes(fixture('declaration')))->toBeTrue();
+    expect($required->passes(fixtureData('declaration')))->toBeTrue();
 });
 
 // ── §7 edge case 2: refusal × migrate-on-read (SchemaLadderMigrator seam) ────────────────────
@@ -79,7 +79,7 @@ it('§7-edge-2: a version-pinned older-era document is NOT spuriously refused by
 
     // The migrating doc uses the OLD `context` field and pins `.../grounding/2`. Under the new
     // stem vocab it would fail (missing `sources`); keyed to its pinned era it conforms.
-    expect($validator->passes(fixture('vocab-migrating')))->toBeTrue();
+    expect($validator->passes(fixtureData('vocab-migrating')))->toBeTrue();
 });
 
 it('§7-edge-2: control — the same older-era shape DOES fail the newer stem vocab (proving the pin matters)', function () {
@@ -92,7 +92,7 @@ it('§7-edge-2: control — the same older-era shape DOES fail the newer stem vo
 
     // vocab-migrating pins `/2`; with no `/2` registered it falls to the stem vocab, which
     // requires `sources` the old-shape doc lacks → refused. This is the negative control.
-    expect($validator->passes(fixture('vocab-migrating')))->toBeFalse();
+    expect($validator->passes(fixtureData('vocab-migrating')))->toBeFalse();
 });
 
 // ── JN-17: per-URI refusal semantics — the AUTHORED `$vocabulary` map's booleans are read ────
@@ -105,7 +105,7 @@ it('JN-17: an authored `true` REFUSES an unknown vocabulary even under the defau
     // declares it required, so the permissive instance default must NOT swallow the refusal.
     $validator = new VocabularyValidator(groundingRegistry());
 
-    $errors = $validator->validate(fixture('vocab-declared-required'));
+    $errors = $validator->validate(fixtureData('vocab-declared-required'));
 
     expect($errors)->not->toBe([])
         ->and($errors[0]->keyword())->toBe('$vocabulary');
@@ -116,13 +116,13 @@ it('JN-17: an authored `false` PASSES an unknown vocabulary even under an instan
     // governs URIs with no authored bit.
     $validator = new VocabularyValidator(groundingRegistry(), RefusalPolicy::Required);
 
-    expect($validator->passes(fixture('vocab-declared-optional')))->toBeTrue();
+    expect($validator->passes(fixtureData('vocab-declared-optional')))->toBeTrue();
 });
 
 it('JN-17: a URI absent from the authored map still follows the instance-wide policy', function () {
     // The authored map declares only an unrelated URI; the mystery namespace keeps default
     // (Optional → pass, Required → refuse) semantics.
-    $doc = fixture('vocab-unknown');
+    $doc = fixtureData('vocab-unknown');
     $doc['$vocabulary'] = ['https://schemas.example.com/other/thing' => true];
 
     expect((new VocabularyValidator(groundingRegistry()))->passes($doc))->toBeTrue()
@@ -132,7 +132,7 @@ it('JN-17: a URI absent from the authored map still follows the instance-wide po
 it('JN-17: a KNOWN vocabulary is still enforced regardless of its authored bit', function () {
     // `false` means "proceed if you cannot supply it" — it never disables enforcement of a
     // vocabulary the registry CAN supply.
-    $doc = fixture('vocab-violates');
+    $doc = fixtureData('vocab-violates');
     $doc['$vocabulary'] = [GROUNDING => false];
 
     expect((new VocabularyValidator(groundingRegistry()))->passes($doc))->toBeFalse();
@@ -142,7 +142,7 @@ it('JN-17: a pinned document era inherits its stem\'s authored bit', function ()
     // vocab-migrating pins `.../grounding/2`; nothing is registered at all, and the authored map
     // declares the version-free STEM required — the pinned URI resolves that bit via the same
     // exact-then-stem identity the registry uses.
-    $doc = fixture('vocab-migrating');
+    $doc = fixtureData('vocab-migrating');
     $doc['$vocabulary'] = [GROUNDING => true];
 
     $errors = (new VocabularyValidator(VocabularyRegistry::make()))->validate($doc);
@@ -172,8 +172,8 @@ it('JN-16: a backed registry resolves through the host lookup, exact then stem',
         ->and($registry->schemaFor(NamespaceUri::from('https://schemas.example.com/other/ns')))->toBeNull();
 
     // The whole validator path works over a backed registry.
-    expect((new VocabularyValidator($registry))->passes(fixture('vocab-conforms')))->toBeTrue()
-        ->and((new VocabularyValidator($registry))->passes(fixture('vocab-violates')))->toBeFalse();
+    expect((new VocabularyValidator($registry))->passes(fixtureData('vocab-conforms')))->toBeTrue()
+        ->and((new VocabularyValidator($registry))->passes(fixtureData('vocab-violates')))->toBeFalse();
 });
 
 it('JN-16: a DECLARED namespace with no artifact fails loudly; an unknown one still passes', function () {
@@ -183,7 +183,7 @@ it('JN-16: a DECLARED namespace with no artifact fails loudly; an unknown one st
     );
 
     // Declared-but-missing → hard error, even under the permissive default policy.
-    expect(fn () => (new VocabularyValidator($registry))->validate(fixture('vocab-unknown')))
+    expect(fn () => (new VocabularyValidator($registry))->validate(fixtureData('vocab-unknown')))
         ->toThrow(VocabularyArtifactMissing::class);
 
     // has() reads declared-but-missing as absent rather than throwing.
@@ -191,7 +191,7 @@ it('JN-16: a DECLARED namespace with no artifact fails loudly; an unknown one st
 
     // An entirely UNDECLARED namespace keeps the permissive unknown-namespace pass.
     $undeclared = VocabularyRegistry::backedBy(fn (string $uri) => null);
-    expect((new VocabularyValidator($undeclared))->passes(fixture('vocab-unknown')))->toBeTrue();
+    expect((new VocabularyValidator($undeclared))->passes(fixtureData('vocab-unknown')))->toBeTrue();
 });
 
 it('JN-16: an UNPINNED namespace one segment under a declared one is unknown, not declared', function () {

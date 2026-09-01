@@ -7,7 +7,7 @@ use Schemastud\JsonNs\Resolver;
 // additive same-URI re-bind (not a replace).
 
 it('resolves a prefix late + scope-local: nearer @namespace shadows an outer one (§5)', function () {
-    $resolver = Resolver::for(fixture('composition-safety'));
+    $resolver = Resolver::for(fixtureData('composition-safety'));
 
     // The inner subtree ('uses') carries its OWN @namespace binding 'splice' to the
     // grounding URI. The outer document binds the SAME prefix to a different, colliding URI.
@@ -20,7 +20,7 @@ it('resolves a prefix late + scope-local: nearer @namespace shadows an outer one
 });
 
 it('cannot corrupt a composed subtree binding by an outer prefix collision (§5 safety)', function () {
-    $resolver = Resolver::for(fixture('composition-safety'));
+    $resolver = Resolver::for(fixtureData('composition-safety'));
 
     // scopeAt on the inner CURIE key resolves through the inner @namespace — the URI is
     // identity, so the outer 'splice' rebind never reaches into the authored subtree.
@@ -31,7 +31,7 @@ it('cannot corrupt a composed subtree binding by an outer prefix collision (§5 
 });
 
 it('treats alias-override as an additive same-URI re-bind, not a replace (§5)', function () {
-    $resolver = Resolver::for(fixture('alias-override'));
+    $resolver = Resolver::for(fixtureData('alias-override'));
 
     // Two prefixes, one URI ⇒ same namespace ⇒ same identity.
     $viaSplice = $resolver->resolveCurie('splice:grounding');
@@ -42,7 +42,7 @@ it('treats alias-override as an additive same-URI re-bind, not a replace (§5)',
 });
 
 it('exposes the effective merged map at a pointer with inner shadowing outer', function () {
-    $resolver = Resolver::for(fixture('composition-safety'));
+    $resolver = Resolver::for(fixtureData('composition-safety'));
 
     $rootMap = $resolver->effectiveMapAt('');
     $innerMap = $resolver->effectiveMapAt('/uses');

@@ -54,7 +54,7 @@ it('keeps generational path text as stem, never as the version integer', functio
 });
 
 it('pins the two declared URIs distinctly in the §8 pinning fixture', function () {
-    $map = NamespaceMap::fromNode(fixture('pinning'));
+    $map = NamespaceMap::fromNode(fixtureData('pinning'));
 
     // Under the SchemaId grammar the *unpinned URI string* IS the pinned URI's stem — so
     // the version-3 pin lives on the stem the unpinned handle names.

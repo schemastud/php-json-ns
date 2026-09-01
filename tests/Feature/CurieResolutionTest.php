@@ -7,13 +7,13 @@ use Schemastud\JsonNs\Resolver;
 // Coverage 1 (cont.): CURIE keys prefix:local resolve through the map to full URIs.
 
 it('resolves a compact CURIE key to its full namespace URI (§4a fixture)', function () {
-    $uri = Resolver::for(fixture('curie-key'))->resolveCurie('splice:grounding');
+    $uri = Resolver::for(fixtureData('curie-key'))->resolveCurie('splice:grounding');
 
     expect((string) $uri)->toBe('https://schemas.splicewire.app/splice/grounding');
 });
 
 it('returns null for a non-CURIE key rather than misparsing it', function () {
-    $resolver = Resolver::for(fixture('curie-key'));
+    $resolver = Resolver::for(fixtureData('curie-key'));
 
     expect($resolver->resolveCurie('sources'))->toBeNull()
         ->and($resolver->resolveCurie('@id'))->toBeNull()
@@ -21,7 +21,7 @@ it('returns null for a non-CURIE key rather than misparsing it', function () {
 });
 
 it('throws on an unbound prefix', function () {
-    Resolver::for(fixture('curie-key'))->resolveCurie('ghost:thing');
+    Resolver::for(fixtureData('curie-key'))->resolveCurie('ghost:thing');
 })->throws(UnboundPrefix::class);
 
 it('recognises CURIE shape but not @-keys, pointers, or bare keys', function () {

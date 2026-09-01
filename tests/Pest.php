@@ -6,7 +6,7 @@
  *
  * @return array<string, mixed>
  */
-function fixture(string $name): array
+function fixtureData(string $name): array
 {
     $path = __DIR__.'/Fixtures/'.$name.'.json';
 
