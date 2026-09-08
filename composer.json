@@ -1,6 +1,6 @@
 {
     "name": "schemastud/php-json-ns",
-    "description": "The framework-free @namespace grammar: a CURIE-shaped, RDF-stripped prefix→URI map (SchemaId-shaped URIs) with @namespaced subtree overlays, late scope-local URI-is-identity resolution, and a namespace-aware validation-scoping model.",
+    "description": "The framework-free @namespace grammar: a CURIE-shaped, RDF-stripped prefix\u2192URI map (SchemaId-shaped URIs) with @namespaced subtree overlays, late scope-local URI-is-identity resolution, and a namespace-aware validation-scoping model.",
     "keywords": [
         "json",
         "namespace",
@@ -63,6 +63,13 @@
         "test": "@php vendor/bin/pest"
     },
     "repositories": [
+        {
+            "type": "path",
+            "url": "../../rushing/php-popcorn",
+            "options": {
+                "symlink": true
+            }
+        },
         {
             "type": "git",
             "url": "https://github.com/stephenr85/php-popcorn.git"
