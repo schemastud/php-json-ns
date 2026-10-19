@@ -25,6 +25,7 @@
     "require-dev": {
         "laravel/pint": "^1.0",
         "pestphp/pest": "^4.0",
+        "rushing/php-package-topology": "dev-main",
         "wikimedia/composer-merge-plugin": "^2.1"
     },
     "autoload": {
@@ -64,11 +65,12 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "../../rushing/php-popcorn",
-            "options": {
-                "symlink": true
-            }
+            "type": "git",
+            "url": "https://github.com/stephenr85/php-graphine.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/stephenr85/php-package-topology.git"
         },
         {
             "type": "git",
